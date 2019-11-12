@@ -1,13 +1,14 @@
 package main
 
-import "flag"
-import "fmt"
-import "os"
-import "time"
+import (
+	"flag"
+	"fmt"
+	"strings"
+	"time"
 
-import "gopkg.in/mgo.v2/bson"
-
-import "github.com/erh/mongonet"
+	"github.com/erh/mongonet"
+	"gopkg.in/mgo.v2/bson"
+)
 
 const (
 	errorCode     = 20000
@@ -26,7 +27,7 @@ type MyInterceptor struct {
 }
 
 func (myi *MyInterceptor) sniResponse() mongonet.SimpleBSON {
-	doc := bson.D{{"sniName", myi.ps.SSLServerName}, {"ok", 1}}
+	doc := bson.D{{"sniName", "myi.ps.SSLServerName"}, {"ok", 1}}
 	raw, err := mongonet.SimpleBSONConvert(doc)
 	if err != nil {
 		panic(err)
@@ -38,28 +39,49 @@ func (myi *MyInterceptor) InterceptClientToMongo(m mongonet.Message) (mongonet.M
 	switch mm := m.(type) {
 	case *mongonet.QueryMessage:
 		if !mongonet.NamespaceIsCommand(mm.Namespace) {
+			fmt.Println("!mongonet.NamespaceIsCommand")
 			return m, nil, nil
 		}
 
 		query, err := mm.Query.ToBSOND()
 		if err != nil || len(query) == 0 {
 			// let mongod handle error message
+			fmt.Println("error or len(query)==0")
 			return m, nil, nil
 		}
 
 		cmdName := query[0].Name
-		if cmdName != "sni" {
+		fmt.Println("cmdName:", cmdName)
+		if strings.ToLower(cmdName) == "ismaster" {
 			return m, nil, nil
 		}
+		if strings.ToLower(cmdName) == "sni" {
+			return nil, nil, newSNIError(myi.ps.RespondToCommand(mm, myi.sniResponse()))
+		}
+		return m, nil, nil
 
-		return nil, nil, newSNIError(myi.ps.RespondToCommand(mm, myi.sniResponse()))
 	case *mongonet.CommandMessage:
-		if mm.CmdName != "sni" {
+		fmt.Println("mm.CmdName:", mm.CmdName)
+		if mm.CmdName == "sni" {
+			return nil, nil, newSNIError(myi.ps.RespondToCommand(mm, myi.sniResponse()))
+		}
+		if mm.CmdName == "isMaster" {
 			return mm, nil, nil
 		}
-		return nil, nil, newSNIError(myi.ps.RespondToCommand(mm, myi.sniResponse()))
+		return mm, nil, nil
+
+	case *mongonet.MessageMessage:
+		fmt.Println("message message:", mm.Serialize())
+		// if mm.CmdName == "sni" {
+		// 	return nil, nil, newSNIError(myi.ps.RespondToCommand(mm, myi.sniResponse()))
+		// }
+		// if mm.CmdName == "isMaster" {
+		// 	return mm, nil, nil
+		// }
+		return m, nil, nil
 	}
 
+	fmt.Println("normal query")
 	return m, nil, nil
 }
 
@@ -89,19 +111,19 @@ func main() {
 
 	pc := mongonet.NewProxyConfig(*bindHost, *bindPort, *mongoHost, *mongoPort)
 
-	pc.UseSSL = true
-	if len(flag.Args()) < 2 {
-		fmt.Printf("need to specify ssl cert and key\n")
-		os.Exit(-1)
-	}
+	pc.UseSSL = false
+	// if len(flag.Args()) < 2 {
+	// 	fmt.Printf("need to specify ssl cert and key\n")
+	// 	os.Exit(-1)
+	// }
 
-	pc.SSLKeys = []mongonet.SSLPair{
-		{flag.Arg(0), flag.Arg(1)},
-	}
+	// pc.SSLKeys = []mongonet.SSLPair{
+	// 	{flag.Arg(0), flag.Arg(1)},
+	// }
 
 	pc.InterceptorFactory = &MyFactory{}
 
-	pc.MongoSSLSkipVerify = true
+	// pc.MongoSSLSkipVerify = true
 
 	proxy := mongonet.NewProxy(pc)
 

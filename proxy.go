@@ -1,13 +1,14 @@
 package mongonet
 
-import "fmt"
-import "io"
-import "net"
-import "time"
+import (
+	"fmt"
+	"io"
+	"net"
+	"time"
 
-import "gopkg.in/mgo.v2/bson"
-
-import "github.com/mongodb/slogger/v2/slogger"
+	"github.com/mongodb/slogger/v2/slogger"
+	"gopkg.in/mgo.v2/bson"
+)
 
 type Proxy struct {
 	config   ProxyConfig
@@ -191,7 +192,12 @@ func (ps *ProxySession) respondWithError(clientMessage Message, err error) error
 }
 
 func (ps *ProxySession) Close() {
-	ps.interceptor.Close()
+	if ps.interceptor != nil {
+		err := ps.interceptor.CheckConnection()
+		if err != nil {
+			ps.interceptor.Close()
+		}
+	}
 }
 
 func (ps *ProxySession) doLoop(pooledConn *PooledConnection) (*PooledConnection, error) {
