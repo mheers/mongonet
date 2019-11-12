@@ -35,6 +35,30 @@ func (myi *MyInterceptor) sniResponse() mongonet.SimpleBSON {
 	return raw
 }
 
+func (myi *MyInterceptor) isMasterResponse() mongonet.SimpleBSON {
+	// doc := bson.D{
+	// 	{"msg", "isdbgrid"},
+	// 	{"maxBsonObjectSize", 16777216},
+	// 	{"maxMessageSizeBytes", 48000000},
+	// 	{"maxWriteBatchSize", 100000},
+	// 	// {"localTime", new Date()},
+	// 	{"maxWireVersion", 7},
+	// 	{"minWireVersion", 5},
+	// 	{"ok", 1},
+	// 	{"readOnly", false},
+	// }
+	doc := bson.D{
+		{"maxWireVersion", 5},
+		{"minWireVersion", 0},
+		{"ok", 1},
+	}
+	raw, err := mongonet.SimpleBSONConvert(doc)
+	if err != nil {
+		panic(err)
+	}
+	return raw
+}
+
 func (myi *MyInterceptor) InterceptClientToMongo(m mongonet.Message) (mongonet.Message, mongonet.ResponseInterceptor, error) {
 	switch mm := m.(type) {
 	case *mongonet.QueryMessage:
@@ -50,23 +74,28 @@ func (myi *MyInterceptor) InterceptClientToMongo(m mongonet.Message) (mongonet.M
 			return m, nil, nil
 		}
 
-		cmdName := query[0].Name
+		cmdName := strings.ToLower(query[0].Name)
 		fmt.Println("cmdName:", cmdName)
-		if strings.ToLower(cmdName) == "ismaster" {
-			return m, nil, nil
-		}
-		if strings.ToLower(cmdName) == "sni" {
+		switch cmdName {
+		case "ismaster":
+			err := myi.ps.RespondToCommand(mm, myi.isMasterResponse())
+			return nil, nil, err
+
+		case "sni":
 			return nil, nil, newSNIError(myi.ps.RespondToCommand(mm, myi.sniResponse()))
 		}
 		return m, nil, nil
 
 	case *mongonet.CommandMessage:
-		fmt.Println("mm.CmdName:", mm.CmdName)
-		if mm.CmdName == "sni" {
+		cmdName := strings.ToLower(mm.CmdName)
+		fmt.Println("cmdName:", cmdName)
+		switch cmdName {
+		case "ismaster":
+			err := myi.ps.RespondToCommand(mm, myi.isMasterResponse())
+			return nil, nil, err
+
+		case "sni":
 			return nil, nil, newSNIError(myi.ps.RespondToCommand(mm, myi.sniResponse()))
-		}
-		if mm.CmdName == "isMaster" {
-			return mm, nil, nil
 		}
 		return mm, nil, nil
 
