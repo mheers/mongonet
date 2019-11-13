@@ -5,7 +5,7 @@ This is not a driver, though could be turned into one if someone wanted.
 
 There are two examples included:
 
-### straight_proxy
+## straight_proxy
 This is a trivial proxy for mongod, no real use today, maybe SSL termination??
 
 ## sni_tester
@@ -19,3 +19,10 @@ To Start
 To use
     > db.adminCommand("sni")
     { "sniName" : "local.10gen.cc", "ok" : 1 }
+
+## ismaster_rewriter
+This is a proxy that intercepts the _ismaster_ request of a client to allow clients without support for replicaSets the access to a mongodb instance with a configured replicaSet.
+
+To Start
+   cd cmd/ismaster_rewriter
+   go run ismaster_rewriter.go 
