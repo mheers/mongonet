@@ -1,7 +1,43 @@
 package mongonet
 
+import (
+	"encoding/json"
+
+	"gopkg.in/mgo.v2/bson"
+)
+
 func (m *QueryMessage) HasResponse() bool {
 	return true
+}
+
+type queryMessageJSON struct {
+	TypeName  string
+	Header    MessageHeader
+	Flags     int32
+	Namespace string
+	Skip      int32
+	NReturn   int32
+	Query     bson.M
+	Project   bson.M
+}
+
+func (m *QueryMessage) ToString() string {
+	query, _ := m.Query.ToBSOND()
+	project, _ := m.Project.ToBSOND()
+
+	cmj := &queryMessageJSON{
+		TypeName:  "QueryMessage",
+		Header:    m.header,
+		Flags:     m.Flags,
+		Namespace: m.Namespace,
+		Skip:      m.Skip,
+		NReturn:   m.NReturn,
+		Query:     query.Map(),
+		Project:   project.Map(),
+	}
+
+	result, _ := json.Marshal(cmj)
+	return string(result)
 }
 
 func (m *QueryMessage) Header() MessageHeader {

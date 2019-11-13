@@ -1,7 +1,39 @@
 package mongonet
 
+import (
+	"encoding/json"
+
+	"gopkg.in/mgo.v2/bson"
+)
+
 func (m *InsertMessage) HasResponse() bool {
 	return false
+}
+
+type insertMessageJSON struct {
+	TypeName  string
+	Header    MessageHeader
+	Namespace string
+	Docs      []bson.M
+	Flags     int32
+}
+
+func (m *InsertMessage) ToString() string {
+	var docs []bson.M
+	for _, doc := range m.Docs {
+		bsond, _ := doc.ToBSOND()
+		docs = append(docs, bsond.Map())
+	}
+	cmj := &insertMessageJSON{
+		TypeName:  "InsertMessage",
+		Header:    m.header,
+		Namespace: m.Namespace,
+		Docs:      docs,
+		Flags:     m.Flags,
+	}
+
+	result, _ := json.Marshal(cmj)
+	return string(result)
 }
 
 func (m *InsertMessage) Header() MessageHeader {

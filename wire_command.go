@@ -1,7 +1,47 @@
 package mongonet
 
+import (
+	"encoding/json"
+
+	"gopkg.in/mgo.v2/bson"
+)
+
 func (m *CommandMessage) HasResponse() bool {
 	return true
+}
+
+type commandMessageJSON struct {
+	TypeName    string
+	Header      MessageHeader
+	CmdName     string
+	CommandArgs bson.M
+	Db          string
+	InputDocs   []bson.M
+	Metadata    bson.M
+}
+
+func (m *CommandMessage) ToString() string {
+	commandArgs, _ := m.CommandArgs.ToBSOND()
+	metadata, _ := m.Metadata.ToBSOND()
+
+	var inputDocs []bson.M
+	for _, doc := range m.InputDocs {
+		bsond, _ := doc.ToBSOND()
+		inputDocs = append(inputDocs, bsond.Map())
+	}
+
+	cmj := &commandMessageJSON{
+		TypeName:    "CommandMessage",
+		Header:      m.header,
+		CmdName:     m.CmdName,
+		CommandArgs: commandArgs.Map(),
+		Db:          m.DB,
+		InputDocs:   inputDocs,
+		Metadata:    metadata.Map(),
+	}
+
+	result, _ := json.Marshal(cmj)
+	return string(result)
 }
 
 func (m *CommandMessage) Header() MessageHeader {

@@ -1,7 +1,32 @@
 package mongonet
 
+import "encoding/json"
+
 func (m *GetMoreMessage) HasResponse() bool {
 	return true
+}
+
+type getMoreMessageJSON struct {
+	TypeName  string
+	Header    MessageHeader
+	Reserved  int32
+	Namespace string
+	NReturn   int32
+	CursorId  int64
+}
+
+func (m *GetMoreMessage) ToString() string {
+	cmj := &getMoreMessageJSON{
+		TypeName:  "GetMoreMessage",
+		Header:    m.header,
+		Namespace: m.Namespace,
+		Reserved:  m.Reserved,
+		NReturn:   m.NReturn,
+		CursorId:  m.CursorId,
+	}
+
+	result, _ := json.Marshal(cmj)
+	return string(result)
 }
 
 func (m *GetMoreMessage) Header() MessageHeader {

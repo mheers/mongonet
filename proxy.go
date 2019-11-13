@@ -67,7 +67,9 @@ type ProxyInterceptor interface {
 	InterceptClientToMongo(m Message) (Message, ResponseInterceptor, error)
 	Close()
 	TrackRequest(MessageHeader)
+	TrackRequestMessage(Message)
 	TrackResponse(MessageHeader)
+	TrackResponseMessage(Message)
 	CheckConnection() error
 	CheckConnectionInterval() time.Duration
 }
@@ -212,6 +214,7 @@ func (ps *ProxySession) doLoop(pooledConn *PooledConnection) (*PooledConnection,
 	var respInter ResponseInterceptor
 	if ps.interceptor != nil {
 		ps.interceptor.TrackRequest(m.Header())
+		ps.interceptor.TrackRequestMessage(m)
 
 		m, respInter, err = ps.interceptor.InterceptClientToMongo(m)
 		if err != nil {
@@ -286,6 +289,7 @@ func (ps *ProxySession) doLoop(pooledConn *PooledConnection) (*PooledConnection,
 
 		if ps.interceptor != nil {
 			ps.interceptor.TrackResponse(resp.Header())
+			ps.interceptor.TrackResponseMessage(resp)
 		}
 
 		if !inExhaustMode {

@@ -1,5 +1,7 @@
 package mongonet
 
+import "encoding/json"
+
 const (
 	BodySectionKind             = 0
 	DocumentSequenceSectionKind = 1
@@ -7,6 +9,26 @@ const (
 
 func (m *MessageMessage) HasResponse() bool {
 	return true
+}
+
+type messageMessageJSON struct {
+	TypeName string
+	Header   MessageHeader
+	FlagBits int32
+	Sections []MessageMessageSection
+}
+
+func (m *MessageMessage) ToString() string {
+
+	cmj := &messageMessageJSON{
+		TypeName: "MessageMessage",
+		Header:   m.header,
+		FlagBits: m.FlagBits,
+		Sections: m.Sections,
+	}
+
+	result, _ := json.Marshal(cmj)
+	return string(result)
 }
 
 func (m *MessageMessage) Header() MessageHeader {

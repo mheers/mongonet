@@ -4,10 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/erh/mongonet"
+	"github.com/mheers/mgosniff/mgosniff"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -64,19 +66,19 @@ func (myi *MyInterceptor) InterceptClientToMongo(m mongonet.Message) (mongonet.M
 	switch mm := m.(type) {
 	case *mongonet.QueryMessage:
 		if !mongonet.NamespaceIsCommand(mm.Namespace) {
-			fmt.Println("!mongonet.NamespaceIsCommand")
+			log.Println("!mongonet.NamespaceIsCommand")
 			return m, nil, nil
 		}
 
 		query, err := mm.Query.ToBSOND()
 		if err != nil || len(query) == 0 {
 			// let mongod handle error message
-			fmt.Println("error or len(query)==0")
+			log.Println("error or len(query)==0")
 			return m, nil, nil
 		}
 
 		cmdName := strings.ToLower(query[0].Name)
-		fmt.Println("cmdName:", cmdName)
+		log.Println("cmdName:", cmdName)
 		switch cmdName {
 		case "ismaster":
 			err := myi.ps.RespondToCommand(mm, myi.isMasterResponse())
@@ -89,7 +91,7 @@ func (myi *MyInterceptor) InterceptClientToMongo(m mongonet.Message) (mongonet.M
 
 	case *mongonet.CommandMessage:
 		cmdName := strings.ToLower(mm.CmdName)
-		fmt.Println("cmdName:", cmdName)
+		log.Println("cmdName:", cmdName)
 		switch cmdName {
 		case "ismaster":
 			err := myi.ps.RespondToCommand(mm, myi.isMasterResponse())
@@ -101,7 +103,7 @@ func (myi *MyInterceptor) InterceptClientToMongo(m mongonet.Message) (mongonet.M
 		return mm, nil, nil
 
 	case *mongonet.MessageMessage:
-		fmt.Println("message message:", mm.Serialize())
+		log.Println("message message:", mm.Serialize())
 		// if mm.CmdName == "sni" {
 		// 	return nil, nil, newSNIError(myi.ps.RespondToCommand(mm, myi.sniResponse()))
 		// }
@@ -111,16 +113,36 @@ func (myi *MyInterceptor) InterceptClientToMongo(m mongonet.Message) (mongonet.M
 		return m, nil, nil
 	}
 
-	fmt.Println("normal query")
+	log.Println("normal query")
 	return m, nil, nil
 }
 
 func (myi *MyInterceptor) Close() {
+	log.Println("closing")
 }
-func (myi *MyInterceptor) TrackRequest(mongonet.MessageHeader) {
+func (myi *MyInterceptor) TrackRequest(mh mongonet.MessageHeader) {
+	// log.Println("TrackRequest", mh.Size, mh.RequestID, mh.ResponseTo, mh.OpCode)
 }
-func (myi *MyInterceptor) TrackResponse(mongonet.MessageHeader) {
+func (myi *MyInterceptor) TrackResponse(mh mongonet.MessageHeader) {
+	// log.Println("TrackResponse", mh.Size, mh.RequestID, mh.ResponseTo, mh.OpCode)
 }
+func (myi *MyInterceptor) TrackRequestMessage(m mongonet.Message) {
+	// log.Println("TrackRequestMessage", m.Serialize())
+	typeName := reflect.TypeOf(m).Name()
+	log.Println("[REQUEST]", typeName, m.ToString())
+}
+func (myi *MyInterceptor) TrackResponseMessage(m mongonet.Message) {
+	typeName := reflect.TypeOf(m).Name()
+	log.Println("[RESPONSE]", typeName, m.ToString())
+}
+
+// func MessageToString(m mongonet.Message) string {
+// 	switch mm := m.(type) {
+// 	case *mongonet.QueryMessage:
+// 		return mm.ToString()
+// 	}
+// 	return strconv.Itoa(int(m.Header().OpCode))
+// }
 
 func (myi *MyInterceptor) CheckConnection() error {
 	return nil
@@ -171,6 +193,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	// Parser{}
+	t := mgosniff.MsgHeader{}
+	fmt.Println(t.MessageLength)
+	// fmt.Println(MyName)
 }
 
 func newSNIError(err error) error {

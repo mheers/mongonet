@@ -1,7 +1,32 @@
 package mongonet
 
+import (
+	"encoding/json"
+)
+
 func (m *KillCursorsMessage) HasResponse() bool {
 	return false
+}
+
+type killCursorsMessageJSON struct {
+	TypeName   string
+	Header     MessageHeader
+	Reserved   int32
+	NumCursors int32
+	CursorIds  []int64
+}
+
+func (m *KillCursorsMessage) ToString() string {
+	cmj := &killCursorsMessageJSON{
+		TypeName:   "KillCursorsMessage",
+		Header:     m.header,
+		Reserved:   m.Reserved,
+		NumCursors: m.NumCursors,
+		CursorIds:  m.CursorIds,
+	}
+
+	result, _ := json.Marshal(cmj)
+	return string(result)
 }
 
 func (m *KillCursorsMessage) Header() MessageHeader {

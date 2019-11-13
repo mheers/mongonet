@@ -1,7 +1,44 @@
 package mongonet
 
+import (
+	"encoding/json"
+
+	"gopkg.in/mgo.v2/bson"
+)
+
 func (m *ReplyMessage) HasResponse() bool {
 	return false // because its a response
+}
+
+type replyMessageJSON struct {
+	TypeName       string
+	Header         MessageHeader
+	Flags          int32
+	CursorId       int64
+	StartingFrom   int32
+	NumberReturned int32
+	Docs           []bson.M
+}
+
+func (m *ReplyMessage) ToString() string {
+	var docs []bson.M
+	for _, doc := range m.Docs {
+		bsond, _ := doc.ToBSOND()
+		docs = append(docs, bsond.Map())
+	}
+
+	cmj := &replyMessageJSON{
+		TypeName:       "ReplyMessage",
+		Header:         m.header,
+		Flags:          m.Flags,
+		CursorId:       m.CursorId,
+		StartingFrom:   m.StartingFrom,
+		NumberReturned: m.NumberReturned,
+		Docs:           docs,
+	}
+
+	result, _ := json.Marshal(cmj)
+	return string(result)
 }
 
 func (m *ReplyMessage) Header() MessageHeader {

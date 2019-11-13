@@ -1,7 +1,41 @@
 package mongonet
 
+import (
+	"encoding/json"
+
+	"gopkg.in/mgo.v2/bson"
+)
+
 func (m *UpdateMessage) HasResponse() bool {
 	return false
+}
+
+type updateMessageJSON struct {
+	TypeName  string
+	Header    MessageHeader
+	Flags     int32
+	Reserved  int32
+	Namespace string
+	Filter    bson.M
+	Update    bson.M
+}
+
+func (m *UpdateMessage) ToString() string {
+	filter, _ := m.Filter.ToBSOND()
+	update, _ := m.Update.ToBSOND()
+
+	cmj := &updateMessageJSON{
+		TypeName:  "UpdateMessage",
+		Header:    m.header,
+		Flags:     m.Flags,
+		Reserved:  m.Reserved,
+		Namespace: m.Namespace,
+		Filter:    filter.Map(),
+		Update:    update.Map(),
+	}
+
+	result, _ := json.Marshal(cmj)
+	return string(result)
 }
 
 func (m *UpdateMessage) Header() MessageHeader {

@@ -1,7 +1,39 @@
 package mongonet
 
+import (
+	"encoding/json"
+
+	"gopkg.in/mgo.v2/bson"
+)
+
 func (m *DeleteMessage) HasResponse() bool {
 	return false
+}
+
+type deleteMessageJSON struct {
+	TypeName  string
+	Header    MessageHeader
+	Namespace string
+	Reserved  int32
+	Flags     int32
+	Filter    bson.M
+}
+
+func (m *DeleteMessage) ToString() string {
+
+	filter, _ := m.Filter.ToBSOND()
+
+	cmj := &deleteMessageJSON{
+		TypeName:  "DeleteMessage",
+		Header:    m.header,
+		Namespace: m.Namespace,
+		Reserved:  m.Reserved,
+		Flags:     m.Flags,
+		Filter:    filter.Map(),
+	}
+
+	result, _ := json.Marshal(cmj)
+	return string(result)
 }
 
 func (m *DeleteMessage) Header() MessageHeader {
